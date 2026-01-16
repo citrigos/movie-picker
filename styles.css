@@ -1,0 +1,79 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+  color: #333;
+  text-align: center;
+}
+
+.container {
+  max-width: 800px;
+  margin: auto;
+  padding: 20px;
+}
+
+h1, h2 {
+  color: #222;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.movie-card {
+  background: #fff;
+  border: 2px solid #ddd;
+  padding: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+  border-radius: 8px;
+  user-select: none;
+}
+
+.movie-card:hover {
+  transform: scale(1.05);
+  border-color: #666;
+}
+
+.movie-card.selected {
+  background: #4CAF50;
+  color: white;
+  border-color: #388E3C;
+}
+
+#selected-summary {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.form-section {
+  margin: 10px 0;
+}
+
+input {
+  padding: 8px;
+  margin: 4px;
+  width: calc(50% - 12px);
+}
+
+button {
+  padding: 8px 14px;
+  background: #0078D4;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+  border-radius: 4px;
+}
+
+button:hover {
+  background: #005a9e;
+}
+
+#leaderboard li {
+  text-align: left;
+  margin: 4px 0;
+  font-weight: bold;
+}
