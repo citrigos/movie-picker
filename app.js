@@ -1,7 +1,30 @@
 const API = "https://script.google.com/macros/s/AKfycbwstea0jH5mMB0bjhxWW-cuoRZQYTTY9mmQPOPp66HpcbUUYCJknZQ3ycRTYfyR1Ty6/exec";
 
 let movies = [];
-let picks = [];
+let picks = {}; // changed to object to track vote counts per movie
+let userName = localStorage.getItem('userName') || '';
+
+// Convert text to title case
+function toTitleCase(str) {
+  return str.toLowerCase().split(' ').map(word => {
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }).join(' ');
+}
+
+// Custom alert function
+function customAlert(message) {
+  const alertEl = document.getElementById('custom-alert');
+  const messageEl = document.getElementById('custom-alert-message');
+  messageEl.textContent = message;
+  alertEl.classList.remove('hidden');
+}
+
+// Close custom alert
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('custom-alert-ok').onclick = () => {
+    document.getElementById('custom-alert').classList.add('hidden');
+  };
+});
 
 async function fetchMovies() {
   const res = await fetch(`${API}?action=movies`);
@@ -13,75 +36,214 @@ async function fetchMovies() {
 function drawMovies() {
   const list = document.getElementById("movie-list");
   list.innerHTML = "";
-  movies.forEach(m => {
+
+  // Sort movies alphabetically
+  const sortedMovies = [...movies].sort((a, b) => a.title.localeCompare(b.title));
+
+  sortedMovies.forEach(m => {
     const card = document.createElement("div");
     card.className = "movie-card";
-    card.textContent = m.title;
-    card.onclick = () => togglePick(m.title, card);
+    const voteCount = picks[m.title] || 0;
+    if (voteCount > 0) {
+      card.classList.add("selected");
+    }
+    card.innerHTML = `
+      <div class="movie-title">${toTitleCase(m.title)}</div>
+      ${voteCount > 0 ? `<div class="vote-badge">${voteCount}</div>` : ''}
+    `;
+    card.onclick = () => togglePick(m.title);
     list.append(card);
   });
 }
 
-function togglePick(title, card) {
-  if (picks.includes(title)) {
-    picks = picks.filter(x => x !== title);
-    card.classList.remove("selected");
-  } else if (picks.length < 3) {
-    picks.push(title);
-    card.classList.add("selected");
+function togglePick(title) {
+  const totalVotes = Object.values(picks).reduce((sum, count) => sum + count, 0);
+  const currentVotes = picks[title] || 0;
+
+  // Cycle through: 0 -> 1 -> 2 -> 3 -> 0
+  if (currentVotes === 0 && totalVotes < 3) {
+    // Start voting for this movie
+    picks[title] = 1;
+  } else if (currentVotes > 0 && currentVotes < 3 && totalVotes < 3) {
+    // Add another vote
+    picks[title]++;
+  } else if (currentVotes > 0) {
+    // Remove all votes from this movie and free up space
+    delete picks[title];
   }
-  document.getElementById("selected-count").textContent = picks.length;
+
+  const newTotal = Object.values(picks).reduce((sum, count) => sum + count, 0);
+  document.getElementById("selected-count").textContent = newTotal;
+  drawMovies();
 }
 
 async function submitVote() {
-  const name = document.getElementById("name").value.trim();
-  if (!name) return alert("Enter your name!");
-  if (picks.length !== 3) return alert("Pick exactly 3 movies!");
+  if (!userName) return customAlert("Please enter your name at the top first!");
 
-  await fetch(API, {
-    method: "POST",
-    body: JSON.stringify({
-      type: "vote",
-      name,
-      picks
-    })
-  });
+  const totalVotes = Object.values(picks).reduce((sum, count) => sum + count, 0);
+  if (totalVotes !== 3) return customAlert("Pick exactly 3 votes!");
 
-  alert("Vote submitted!");
-  picks = [];
-  fetchMovies(); // refresh leaderboard + reset
+  const loadingIndicator = document.getElementById("loading-indicator");
+  loadingIndicator.classList.remove("hidden");
+
+  try {
+    await fetch(API, {
+      method: "POST",
+      body: JSON.stringify({
+        type: "vote",
+        name: userName,
+        picks
+      })
+    });
+
+    loadingIndicator.classList.add("hidden");
+    customAlert("Vote submitted!");
+    picks = {};
+    document.getElementById("selected-count").textContent = 0;
+    await fetchMovies(); // refresh leaderboard + reset
+  } catch (error) {
+    loadingIndicator.classList.add("hidden");
+    customAlert("Failed to submit vote. Please try again.");
+  }
 }
 
 async function submitSuggestion() {
-  const name = document.getElementById("sug-name").value.trim();
+  if (!userName) return customAlert("Please enter your name at the top first!");
+
   const suggestion = document.getElementById("suggestion").value.trim();
-  if (!name || !suggestion) return alert("Enter name & suggestion!");
+  if (!suggestion) return customAlert("Enter at least one movie title!");
 
-  await fetch(API, {
-    method: "POST",
-    body: JSON.stringify({
-      type: "suggestion",
-      name,
-      suggestion
-    })
-  });
+  const suggestionInput = document.getElementById("suggestion");
 
-  alert(`Thanks for suggesting "${suggestion}"!`);
-  fetchMovies(); // refresh list instantly
+  // Parse comma-separated list
+  const movies = suggestion.split(',').map(s => s.trim()).filter(s => s);
+  if (movies.length === 0) return customAlert("Enter at least one movie title!");
+
+  const loadingIndicator = document.getElementById("loading-indicator");
+  loadingIndicator.classList.remove("hidden");
+
+  try {
+    // Submit each movie separately
+    for (const movie of movies) {
+      await fetch(API, {
+        method: "POST",
+        body: JSON.stringify({
+          type: "suggestion",
+          name: userName,
+          suggestion: toTitleCase(movie)
+        })
+      });
+    }
+
+    loadingIndicator.classList.add("hidden");
+    const movieWord = movies.length === 1 ? 'movie' : 'movies';
+    customAlert(`Thanks for suggesting ${movies.length} ${movieWord}!`);
+    suggestionInput.value = "";
+    await fetchMovies(); // refresh list instantly
+  } catch (error) {
+    loadingIndicator.classList.add("hidden");
+    customAlert("Failed to submit suggestion. Please try again.");
+  }
 }
 
 async function updateLeaderboard() {
   const lb = document.getElementById("leaderboard");
+  const topMovies = document.getElementById("top-movies");
+
   lb.innerHTML = "";
+  topMovies.innerHTML = "";
+
   const sorted = [...movies].sort((a,b) => b.votes - a.votes);
-  sorted.forEach(m => {
+  const withVotes = sorted.filter(m => m.votes > 0);
+  const withoutVotes = sorted.filter(m => m.votes === 0);
+
+  // Top leaderboard (top 3)
+  sorted.slice(0, 3).forEach(m => {
+    const chip = document.createElement("div");
+    chip.className = "top-movie";
+    chip.innerHTML = `${toTitleCase(m.title)}<strong>${m.votes}</strong>`;
+    topMovies.append(chip);
+  });
+
+  // Full leaderboard - movies with votes
+  withVotes.forEach(m => {
     const li = document.createElement("li");
-    li.textContent = `${m.title}: ${m.votes}`;
+    li.textContent = `${toTitleCase(m.title)}: ${m.votes}`;
     lb.append(li);
   });
+
+  // No votes section
+  if (withoutVotes.length > 0) {
+    const noVotesLi = document.createElement("li");
+    noVotesLi.className = "no-votes";
+    const movieTitles = withoutVotes.map(m => toTitleCase(m.title)).join(', ');
+    noVotesLi.textContent = `No votes for: ${movieTitles}`;
+    lb.append(noVotesLi);
+  }
+}
+
+function saveName() {
+  const nameInput = document.getElementById("name");
+  const name = nameInput.value.trim();
+
+  if (!name) return customAlert("Please enter your name!");
+
+  userName = name;
+  localStorage.setItem('userName', userName);
+  updateNameUI();
+}
+
+function updateNameUI() {
+  const nameBanner = document.getElementById("name-banner");
+  const notYouLink = document.getElementById("not-you-link");
+  const greeting = document.getElementById("greeting");
+
+  if (userName) {
+    nameBanner.classList.add("hidden");
+    notYouLink.classList.remove("hidden");
+    greeting.textContent = `Hi ${userName}, vote for movie night!`;
+  } else {
+    nameBanner.classList.remove("hidden");
+    notYouLink.classList.add("hidden");
+    greeting.textContent = "Vote for Movie Night!";
+  }
+}
+
+function changeName() {
+  userName = '';
+  localStorage.removeItem('userName');
+  document.getElementById("name").value = '';
+  updateNameUI();
 }
 
 document.getElementById("submit-vote").onclick = submitVote;
 document.getElementById("submit-suggest").onclick = submitSuggestion;
+document.getElementById("save-name").onclick = saveName;
 
-document.addEventListener("DOMContentLoaded", fetchMovies);
+// Toggle suggest form
+document.getElementById("suggest-toggle").onclick = () => {
+  const form = document.getElementById("suggest-form");
+  const button = document.getElementById("suggest-toggle");
+  if (form.classList.contains("hidden")) {
+    form.classList.remove("hidden");
+    button.classList.add("hidden");
+  } else {
+    form.classList.add("hidden");
+    button.classList.remove("hidden");
+  }
+};
+
+// Handle Enter key in name input
+document.getElementById("name").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") saveName();
+});
+
+// Fun mode toggle
+document.getElementById("fun-mode-toggle").onclick = () => {
+  document.body.classList.toggle("fun-mode");
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Don't call updateNameUI here - it's already handled by inline script
+  fetchMovies();
+});

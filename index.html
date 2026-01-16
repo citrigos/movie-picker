@@ -6,29 +6,85 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <button id="fun-mode-toggle" class="fun-mode-toggle" title="Toggle fun mode">✨</button>
+
   <div class="container">
-    <h1>Vote for Your Top 3 Movies</h1>
+    <h1 id="greeting">Vote for Movie Night!</h1>
+
+    <!-- Name Section -->
+    <div id="name-section">
+      <div id="name-banner" class="name-banner">
+        <input type="text" id="name" placeholder="Enter your name" />
+        <span class="required-asterisk">*</span>
+        <button id="save-name" class="save-name-btn">Save</button>
+      </div>
+
+      <div id="not-you-link" class="not-you-link hidden">
+        <a href="#" onclick="changeName(); return false;">not you?</a>
+      </div>
+    </div>
+
+    <script>
+      // Run immediately to prevent flash of wrong state
+      (function() {
+        const savedName = localStorage.getItem('userName');
+        const nameBanner = document.getElementById('name-banner');
+        const notYouLink = document.getElementById('not-you-link');
+        const greeting = document.getElementById('greeting');
+
+        if (savedName) {
+          nameBanner.classList.add('hidden');
+          notYouLink.classList.remove('hidden');
+          greeting.textContent = `Hi ${savedName}, vote for movie night!`;
+        } else {
+          nameBanner.classList.remove('hidden');
+          notYouLink.classList.add('hidden');
+        }
+      })();
+    </script>
+
+    <!-- Top Leaderboard -->
+    <div class="top-leaderboard">
+      <h3>🎬 Current Leaders</h3>
+      <div class="top-movies" id="top-movies"></div>
+    </div>
 
     <div id="movie-list" class="grid"></div>
 
-    <div id="selected-summary">You’ve selected: <span id="selected-count">0</span>/3</div>
+    <div id="selected-summary">You've selected: <span id="selected-count">0</span>/3</div>
 
-    <div class="form-section">
-      <input type="text" id="name" placeholder="Your Name" required>
-      <button id="submit-vote">Submit Vote</button>
+    <button id="submit-vote" class="main-action-btn">Submit Vote</button>
+
+    <hr>
+
+    <button id="suggest-toggle" class="suggest-toggle-btn">+ Suggest Movies</button>
+
+    <div id="suggest-form" class="suggest-section hidden">
+      <h2>Suggest Your Movie</h2>
+      <div class="form-section">
+        <input type="text" id="suggestion" placeholder="Movie title (or comma-separated list)">
+        <button id="submit-suggest">Add</button>
+      </div>
     </div>
 
     <hr>
-    <h2>Suggest A Movie</h2>
-    <div class="form-section">
-      <input type="text" id="sug-name" placeholder="Your Name">
-      <input type="text" id="suggestion" placeholder="Movie Title">
-      <button id="submit-suggest">Suggest Movie</button>
-    </div>
 
-    <hr>
-    <h2>Leaderboard</h2>
+    <h2>Full Leaderboard</h2>
     <ul id="leaderboard"></ul>
+  </div>
+
+  <!-- Custom Alert Modal -->
+  <div id="custom-alert" class="custom-alert hidden">
+    <div class="custom-alert-content">
+      <p id="custom-alert-message"></p>
+      <button id="custom-alert-ok">OK</button>
+    </div>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div id="loading-indicator" class="loading-indicator hidden">
+    <div class="loading-spinner"></div>
+    <p>Submitting...</p>
   </div>
 
   <script src="app.js"></script>
