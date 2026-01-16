@@ -1,33 +1,35 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Movie Votes</title>
+  <title>Movie Vote</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Vote for Your Top 3 Movies</h1>
+  <div class="container">
+    <h1>Vote for Your Top 3 Movies</h1>
 
-  <form id="vote-form">
-    <input type="text" id="name" placeholder="Your Name" required/><br>
+    <div id="movie-list" class="grid"></div>
 
-    <select id="pick1"></select><br>
-    <select id="pick2"></select><br>
-    <select id="pick3"></select><br>
+    <div id="selected-summary">You’ve selected: <span id="selected-count">0</span>/3</div>
 
-    <button type="submit">Submit Vote</button>
-  </form>
+    <div class="form-section">
+      <input type="text" id="name" placeholder="Your Name" required>
+      <button id="submit-vote">Submit Vote</button>
+    </div>
 
-  <h2>Suggest A Movie</h2>
-  <form id="suggest-form">
-    <input type="text" id="sug-name" placeholder="Your Name" required /><br>
-    <input type="text" id="suggestion" placeholder="Movie Title" required /><br>
-    <button type="submit">Suggest</button>
-  </form>
+    <hr>
+    <h2>Suggest A Movie</h2>
+    <div class="form-section">
+      <input type="text" id="sug-name" placeholder="Your Name">
+      <input type="text" id="suggestion" placeholder="Movie Title">
+      <button id="submit-suggest">Suggest Movie</button>
+    </div>
 
-  <h2>Leaderboard</h2>
-  <ul id="leaderboard"></ul>
+    <hr>
+    <h2>Leaderboard</h2>
+    <ul id="leaderboard"></ul>
+  </div>
 
   <script src="app.js"></script>
 </body>
