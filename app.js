@@ -1,65 +1,87 @@
-// app.js
+const API = "https://script.google.com/macros/s/AKfycbwstea0jH5mMB0bjhxWW-cuoRZQYTTY9mmQPOPp66HpcbUUYCJknZQ3ycRTYfyR1Ty6/exec";
 
-const API = "https://script.google.com/macros/s/AKfycbyrmY5le2OOQlD3oDMoOJSPP9HKfpo1FUHMwgBL6tD3PHVJxk5QYx_QfAfan9gR6yxb/exec";
+let movies = [];
+let picks = [];
 
 async function fetchMovies() {
   const res = await fetch(`${API}?action=movies`);
-  return res.json();
+  movies = await res.json();
+  drawMovies();
+  updateLeaderboard();
+}
+
+function drawMovies() {
+  const list = document.getElementById("movie-list");
+  list.innerHTML = "";
+  movies.forEach(m => {
+    const card = document.createElement("div");
+    card.className = "movie-card";
+    card.textContent = m.title;
+    card.onclick = () => togglePick(m.title, card);
+    list.append(card);
+  });
+}
+
+function togglePick(title, card) {
+  if (picks.includes(title)) {
+    picks = picks.filter(x => x !== title);
+    card.classList.remove("selected");
+  } else if (picks.length < 3) {
+    picks.push(title);
+    card.classList.add("selected");
+  }
+  document.getElementById("selected-count").textContent = picks.length;
+}
+
+async function submitVote() {
+  const name = document.getElementById("name").value.trim();
+  if (!name) return alert("Enter your name!");
+  if (picks.length !== 3) return alert("Pick exactly 3 movies!");
+
+  await fetch(API, {
+    method: "POST",
+    body: JSON.stringify({
+      type: "vote",
+      name,
+      picks
+    })
+  });
+
+  alert("Vote submitted!");
+  picks = [];
+  fetchMovies(); // refresh leaderboard + reset
+}
+
+async function submitSuggestion() {
+  const name = document.getElementById("sug-name").value.trim();
+  const suggestion = document.getElementById("suggestion").value.trim();
+  if (!name || !suggestion) return alert("Enter name & suggestion!");
+
+  await fetch(API, {
+    method: "POST",
+    body: JSON.stringify({
+      type: "suggestion",
+      name,
+      suggestion
+    })
+  });
+
+  alert(`Thanks for suggesting "${suggestion}"!`);
+  fetchMovies(); // refresh list instantly
 }
 
 async function updateLeaderboard() {
-  let movies = await fetchMovies();
-  movies.sort((a,b) => b.votes - a.votes);
-  const ul = document.getElementById("leaderboard");
-  ul.innerHTML = "";
-  movies.forEach(m => {
-    ul.innerHTML += `<li>${m.title}: ${m.votes} votes</li>`;
+  const lb = document.getElementById("leaderboard");
+  lb.innerHTML = "";
+  const sorted = [...movies].sort((a,b) => b.votes - a.votes);
+  sorted.forEach(m => {
+    const li = document.createElement("li");
+    li.textContent = `${m.title}: ${m.votes}`;
+    lb.append(li);
   });
 }
 
-function populateSelects(movies) {
-  ["pick1","pick2","pick3"].forEach(id => {
-    const sel = document.getElementById(id);
-    sel.innerHTML = `<option value="">Select</option>`;
-    movies.forEach(m => {
-      sel.innerHTML += `<option value="${m.title}">${m.title}</option>`;
-    });
-  });
-}
+document.getElementById("submit-vote").onclick = submitVote;
+document.getElementById("submit-suggest").onclick = submitSuggestion;
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const movies = await fetchMovies();
-  populateSelects(movies);
-  updateLeaderboard();
-});
-
-document.getElementById("vote-form").onsubmit = async (e) => {
-  e.preventDefault();
-  const payload = {
-    type: "vote",
-    name: document.getElementById("name").value,
-    pick1: document.getElementById("pick1").value,
-    pick2: document.getElementById("pick2").value,
-    pick3: document.getElementById("pick3").value,
-  };
-  await fetch(API, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-  alert("Vote recorded!");
-  updateLeaderboard();
-};
-
-document.getElementById("suggest-form").onsubmit = async (e) => {
-  e.preventDefault();
-  const payload = {
-    type: "suggestion",
-    name: document.getElementById("sug-name").value,
-    suggestion: document.getElementById("suggestion").value,
-  };
-  await fetch(API, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
-  alert("Suggestion recorded!");
-};
+document.addEventListener("DOMContentLoaded", fetchMovies);
