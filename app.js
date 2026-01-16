@@ -1,6 +1,6 @@
 // app.js
 
-const API = "https://script.google.com/macros/s/ABC123/exec";
+const API = "https://script.google.com/macros/s/AKfycbyrmY5le2OOQlD3oDMoOJSPP9HKfpo1FUHMwgBL6tD3PHVJxk5QYx_QfAfan9gR6yxb/exec";
 
 async function fetchMovies() {
   const res = await fetch(`${API}?action=movies`);
