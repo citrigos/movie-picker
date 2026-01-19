@@ -89,10 +89,15 @@ function recordSuggestion(payload) {
   // Add to Movies sheet if not exists
   const msheet = SpreadsheetApp.getActive().getSheetByName(SHEET_MOVIES);
   const mdata = msheet.getDataRange().getValues();
-  const existingTitles = mdata.slice(1).map(r => r[1].toLowerCase());
+
+  // Skip header row when checking existing titles
+  const existingTitles = mdata.length > 1
+    ? mdata.slice(1).map(r => r[1].toLowerCase())
+    : [];
 
   if (!existingTitles.includes(payload.suggestion.toLowerCase())) {
-    const newId = mdata.length;
+    // Generate ID: if there are existing movies, use the last ID + 1, otherwise start at 1
+    const newId = mdata.length > 1 ? mdata[mdata.length - 1][0] + 1 : 1;
     msheet.appendRow([newId, payload.suggestion, 0]);
   }
 
