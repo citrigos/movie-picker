@@ -83,25 +83,44 @@ function recordVote(payload) {
 }
 
 function recordSuggestion(payload) {
-  const ss = SpreadsheetApp.getActive().getSheetByName(SHEET_SUGGEST);
-  ss.appendRow([new Date(), payload.name, payload.suggestion]);
+  try {
+    // Log the payload for debugging
+    Logger.log("Recording suggestion: " + JSON.stringify(payload));
 
-  // Add to Movies sheet if not exists
-  const msheet = SpreadsheetApp.getActive().getSheetByName(SHEET_MOVIES);
-  const mdata = msheet.getDataRange().getValues();
+    // Record to Suggestions sheet
+    const ss = SpreadsheetApp.getActive().getSheetByName(SHEET_SUGGEST);
+    if (!ss) {
+      return ContentService.createTextOutput("Error: Suggestions sheet not found");
+    }
+    ss.appendRow([new Date(), payload.name, payload.suggestion]);
 
-  // Skip header row when checking existing titles
-  const existingTitles = mdata.length > 1
-    ? mdata.slice(1).map(r => r[1].toLowerCase())
-    : [];
+    // Add to Movies sheet if not exists
+    const msheet = SpreadsheetApp.getActive().getSheetByName(SHEET_MOVIES);
+    if (!msheet) {
+      return ContentService.createTextOutput("Error: Movies sheet not found");
+    }
 
-  if (!existingTitles.includes(payload.suggestion.toLowerCase())) {
-    // Generate ID: if there are existing movies, use the last ID + 1, otherwise start at 1
-    const newId = mdata.length > 1 ? mdata[mdata.length - 1][0] + 1 : 1;
-    msheet.appendRow([newId, payload.suggestion, 0]);
+    const mdata = msheet.getDataRange().getValues();
+
+    // Skip header row when checking existing titles
+    const existingTitles = mdata.length > 1
+      ? mdata.slice(1).map(r => r[1].toLowerCase())
+      : [];
+
+    if (!existingTitles.includes(payload.suggestion.toLowerCase())) {
+      // Generate ID: if there are existing movies, use the last ID + 1, otherwise start at 1
+      const newId = mdata.length > 1 ? mdata[mdata.length - 1][0] + 1 : 1;
+      msheet.appendRow([newId, payload.suggestion, 0]);
+      Logger.log("Added new movie with ID: " + newId);
+    } else {
+      Logger.log("Movie already exists: " + payload.suggestion);
+    }
+
+    return ContentService.createTextOutput("OK");
+  } catch (error) {
+    Logger.log("Error in recordSuggestion: " + error.toString());
+    return ContentService.createTextOutput("Error: " + error.toString());
   }
-
-  return ContentService.createTextOutput("OK");
 }
 
 function asJSON(obj) {
