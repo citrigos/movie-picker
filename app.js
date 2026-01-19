@@ -4,6 +4,7 @@ let movies = [];
 let picks = {}; // changed to object to track vote counts per movie
 let userName = localStorage.getItem('userName') || '';
 let sortBy = 'alpha'; // 'alpha' or 'time'
+let watchedMovies = JSON.parse(localStorage.getItem('watchedMovies')) || [];
 
 // Convert text to title case
 function toTitleCase(str) {
@@ -52,9 +53,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchMovies() {
   const res = await fetch(`${API}?action=movies`);
-  movies = await res.json();
+  const allMovies = await res.json();
+  // Filter out watched movies
+  movies = allMovies.filter(m => !watchedMovies.includes(m.title.toLowerCase()));
   drawMovies();
   updateLeaderboard();
+  drawWatchedMovies();
+}
+
+function formatDate(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  const now = new Date();
+  const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+
+  if (date > oneYearAgo) {
+    // Within last year: DD/MM
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month}`;
+  } else {
+    // Older: MM/YYYY
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${year}`;
+  }
 }
 
 function drawMovies() {
@@ -81,8 +104,12 @@ function drawMovies() {
       card.classList.add("selected");
     }
     const suggesterText = m.suggester ? `<span class="suggester">by ${m.suggester}</span>` : '';
+    const dateText = (sortBy === 'time' && m.timestamp) ? `<span class="movie-date">${formatDate(m.timestamp)}</span>` : '';
     card.innerHTML = `
-      <div class="movie-title">${toTitleCase(m.title)} ${suggesterText}</div>
+      <div class="movie-title">
+        <span>${toTitleCase(m.title)} ${suggesterText}</span>
+        ${dateText}
+      </div>
       ${voteCount > 0 ? `<div class="vote-badge">${voteCount}</div>` : ''}
     `;
     card.onclick = () => togglePick(m.title);
@@ -212,14 +239,14 @@ async function updateLeaderboard() {
   sorted.slice(0, 3).forEach(m => {
     const chip = document.createElement("div");
     chip.className = "top-movie";
-    chip.innerHTML = `${toTitleCase(m.title)}<strong>${m.votes}</strong>`;
+    chip.innerHTML = `${toTitleCase(m.title.trim())}<strong>${m.votes}</strong>`;
     topMovies.append(chip);
   });
 
   // Full leaderboard - movies with votes
   withVotes.forEach(m => {
     const li = document.createElement("li");
-    li.textContent = `${toTitleCase(m.title)}: ${m.votes}`;
+    li.textContent = `${toTitleCase(m.title.trim())}: ${m.votes}`;
     lb.append(li);
   });
 
@@ -227,7 +254,7 @@ async function updateLeaderboard() {
   if (withoutVotes.length > 0) {
     const noVotesLi = document.createElement("li");
     noVotesLi.className = "no-votes";
-    const movieTitles = withoutVotes.map(m => toTitleCase(m.title)).join(', ');
+    const movieTitles = withoutVotes.map(m => toTitleCase(m.title.trim())).join(', ');
     noVotesLi.textContent = `No votes for: ${movieTitles}`;
     lb.append(noVotesLi);
   }
@@ -303,19 +330,105 @@ document.getElementById("fun-mode-toggle").onclick = () => {
 };
 
 // Sort controls
-document.getElementById("sort-alpha").onclick = () => {
+document.getElementById("sort-alpha").onclick = (e) => {
+  e.preventDefault();
   sortBy = 'alpha';
   document.getElementById("sort-alpha").classList.add("active");
   document.getElementById("sort-time").classList.remove("active");
   drawMovies();
 };
 
-document.getElementById("sort-time").onclick = () => {
+document.getElementById("sort-time").onclick = (e) => {
+  e.preventDefault();
   sortBy = 'time';
   document.getElementById("sort-time").classList.add("active");
   document.getElementById("sort-alpha").classList.remove("active");
   drawMovies();
 };
+
+// Leaderboard toggle
+document.getElementById("leaderboard-toggle").onclick = () => {
+  const section = document.getElementById("leaderboard-section");
+  const button = document.getElementById("leaderboard-toggle");
+  section.classList.remove("hidden");
+  button.classList.add("hidden");
+};
+
+// Watched movies functions
+function drawWatchedMovies() {
+  const container = document.getElementById("watched-movies-list");
+  container.innerHTML = "";
+
+  if (watchedMovies.length === 0) {
+    container.innerHTML = '<p style="color: #86868b; font-size: 0.8rem; font-style: italic;">No movies marked as watched yet.</p>';
+    return;
+  }
+
+  watchedMovies.forEach(movieTitle => {
+    const chip = document.createElement("div");
+    chip.className = "watched-movie-chip";
+    chip.innerHTML = `
+      <span>${toTitleCase(movieTitle)}</span>
+      <span class="remove-btn" data-title="${movieTitle}">×</span>
+    `;
+    container.append(chip);
+  });
+
+  // Add event listeners to remove buttons
+  document.querySelectorAll(".remove-btn").forEach(btn => {
+    btn.onclick = () => {
+      const title = btn.getAttribute("data-title");
+      removeWatchedMovie(title);
+    };
+  });
+}
+
+function markAsWatched() {
+  const input = document.getElementById("mark-watched");
+  const movieTitle = input.value.trim().toLowerCase();
+
+  if (!movieTitle) return customAlert("Enter a movie title!");
+
+  // Check if movie exists in the full list
+  const movieExists = movies.some(m => m.title.toLowerCase() === movieTitle);
+
+  if (!movieExists) {
+    return customAlert("Movie not found in the list. Make sure the title matches exactly.");
+  }
+
+  if (watchedMovies.includes(movieTitle)) {
+    return customAlert("This movie is already marked as watched!");
+  }
+
+  watchedMovies.push(movieTitle);
+  localStorage.setItem('watchedMovies', JSON.stringify(watchedMovies));
+
+  input.value = "";
+  triggerHaptic('success');
+  customAlert("Movie marked as watched!");
+
+  // Refresh the movie list to remove the watched movie
+  fetchMovies();
+}
+
+function removeWatchedMovie(title) {
+  watchedMovies = watchedMovies.filter(t => t !== title);
+  localStorage.setItem('watchedMovies', JSON.stringify(watchedMovies));
+  triggerHaptic('medium');
+
+  // Refresh to add the movie back to the list
+  fetchMovies();
+}
+
+document.getElementById("submit-watched").onclick = markAsWatched;
+
+// Handle Enter key in mark-watched input
+document.getElementById("mark-watched").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    markAsWatched();
+  }
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   // Don't call updateNameUI here - it's already handled by inline script

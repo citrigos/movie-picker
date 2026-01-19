@@ -152,30 +152,25 @@ h2 {
 .sort-controls {
   display: flex;
   gap: 8px;
-  justify-content: center;
+  justify-content: flex-end;
   margin: 10px 0 8px 0;
-}
-
-.sort-btn {
-  padding: 6px 12px;
-  background: white;
-  color: #1d1d1f;
-  border: 1px solid #d2d2d7;
-  border-radius: 6px;
   font-size: 0.75rem;
+}
+
+.sort-link {
+  color: #86868b;
+  text-decoration: none;
   cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M4 4 L12 28 L16 18 L28 14 Z" fill="%23FFD700" stroke="%23FFA500" stroke-width="1"/><circle cx="8" cy="8" r="1" fill="%23FFF"/><circle cx="14" cy="14" r="1" fill="%23FFF"/><circle cx="10" cy="12" r="1" fill="%23FFF"/></svg>'), pointer;
-  transition: all 0.2s ease;
-  font-weight: 500;
+  transition: color 0.2s ease;
 }
 
-.sort-btn:hover {
-  background: #f5f5f7;
+.sort-link:hover {
+  color: #0071e3;
 }
 
-.sort-btn.active {
-  background: #1d1d1f;
-  color: white;
-  border-color: #1d1d1f;
+.sort-link.active {
+  color: #1d1d1f;
+  font-weight: 600;
 }
 
 .grid {
@@ -217,17 +212,32 @@ h2 {
 .movie-title {
   flex: 1;
   text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
 }
 
 .suggester {
   color: #86868b;
   font-weight: 400;
   font-size: 0.75rem;
-  margin-left: 4px;
+}
+
+.movie-date {
+  color: #86868b;
+  font-weight: 400;
+  font-size: 0.7rem;
+  margin-left: auto;
+  padding-left: 8px;
 }
 
 .movie-card.selected .suggester {
   color: rgba(255, 255, 255, 0.7);
+}
+
+.movie-card.selected .movie-date {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .vote-badge {
@@ -367,18 +377,63 @@ input:disabled {
   max-width: 160px;
 }
 
-.suggest-toggle-btn {
+.suggest-toggle-btn, .leaderboard-toggle-btn {
   width: 100%;
   background: white;
   color: #1d1d1f;
   border: 1px solid #d2d2d7;
   margin: 16px 0 0 0;
   font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-.suggest-toggle-btn:hover:not(:disabled) {
+.suggest-toggle-btn:hover:not(:disabled), .leaderboard-toggle-btn:hover:not(:disabled) {
   background: #f5f5f7;
   border-color: #1d1d1f;
+}
+
+.caret {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.caret.expanded {
+  transform: rotate(90deg);
+}
+
+/* Watched Movies */
+#watched-movies-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+  min-height: 20px;
+}
+
+.watched-movie-chip {
+  background: #f5f5f7;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #1d1d1f;
+  border: 1px solid #d2d2d7;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.watched-movie-chip .remove-btn {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M4 4 L12 28 L16 18 L28 14 Z" fill="%23FFD700" stroke="%23FFA500" stroke-width="1"/><circle cx="8" cy="8" r="1" fill="%23FFF"/><circle cx="14" cy="14" r="1" fill="%23FFF"/><circle cx="10" cy="12" r="1" fill="%23FFF"/></svg>'), pointer;
+  color: #ff3b30;
+  font-weight: bold;
+  transition: transform 0.2s ease;
+}
+
+.watched-movie-chip .remove-btn:hover {
+  transform: scale(1.2);
 }
 
 hr {
@@ -413,6 +468,14 @@ hr {
   color: #86868b;
   font-style: italic;
   font-weight: 400;
+  background: transparent;
+  border: none;
+  padding: 10px 0;
+  margin-top: 8px;
+}
+
+#leaderboard li.no-votes:hover {
+  background: transparent;
 }
 
 /* Custom Alert */

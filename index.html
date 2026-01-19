@@ -51,8 +51,9 @@
 
     <!-- Sort Controls -->
     <div class="sort-controls">
-      <button id="sort-alpha" class="sort-btn active">A-Z</button>
-      <button id="sort-time" class="sort-btn">Recent</button>
+      <a href="#" id="sort-alpha" class="sort-link active">A-Z</a>
+      <span>|</span>
+      <a href="#" id="sort-time" class="sort-link">Recent</a>
     </div>
 
     <div id="movie-list" class="grid"></div>
@@ -75,8 +76,22 @@
 
     <hr>
 
-    <h2>Full Leaderboard</h2>
-    <ul id="leaderboard"></ul>
+    <button id="leaderboard-toggle" class="leaderboard-toggle-btn">
+      <span class="caret">▸</span> Full Leaderboard
+    </button>
+
+    <div id="leaderboard-section" class="hidden">
+      <ul id="leaderboard"></ul>
+    </div>
+
+    <hr>
+
+    <h2>Movie Night History</h2>
+    <div id="watched-movies-list"></div>
+    <div class="form-section">
+      <input type="text" id="mark-watched" placeholder="Movie title to mark as watched">
+      <button id="submit-watched">Mark Watched</button>
+    </div>
   </div>
 
   <!-- Custom Alert Modal -->
