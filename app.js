@@ -1,4 +1,4 @@
-const API = "https://script.google.com/macros/s/AKfycbxIBIxNBJbyUaUHI9_JKkS8mv3L-jiJ9a-oNB8U_fhfx9RUl3kpS_LPnTNK8T2wIXRL/exec";
+const API = "https://script.google.com/macros/s/AKfycbylstYgHvvqMNfLfkKtHPAbazfFMpce5_-_QCuQ6BjZqaeusBx1ONIppOYD9-1TR2Zk/exec";
 
 let movies = [];
 let picks = {}; // changed to object to track vote counts per movie
