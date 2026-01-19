@@ -163,9 +163,11 @@ function markMovieWatched(payload) {
     for (let i = 1; i < mdata.length; i++) {
       if (mdata[i][1].toLowerCase() === payload.title.toLowerCase()) {
         // Update Watched Date (column 4) and Marked By (column 5)
-        msheet.getRange(i + 1, 4).setValue(new Date());
+        // Use provided watchedDate or default to current date
+        const watchedDate = payload.watchedDate ? new Date(payload.watchedDate) : new Date();
+        msheet.getRange(i + 1, 4).setValue(watchedDate);
         msheet.getRange(i + 1, 5).setValue(payload.markedBy);
-        Logger.log("Movie marked as watched: " + payload.title);
+        Logger.log("Movie marked as watched: " + payload.title + " on " + watchedDate);
         return ContentService.createTextOutput("OK");
       }
     }

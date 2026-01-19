@@ -391,7 +391,9 @@ async function markAsWatched() {
   if (!userName) return customAlert("Please enter your name at the top first!");
 
   const input = document.getElementById("mark-watched");
+  const dateInput = document.getElementById("watched-date");
   const movieTitle = input.value.trim();
+  const watchedDate = dateInput.value; // YYYY-MM-DD format or empty
 
   if (!movieTitle) return customAlert("Enter a movie title!");
 
@@ -411,14 +413,21 @@ async function markAsWatched() {
   loadingIndicator.classList.remove("hidden");
 
   try {
-    console.log("Marking as watched:", { type: "markWatched", title: movie.title, markedBy: userName });
+    const payload = {
+      type: "markWatched",
+      title: movie.title,
+      markedBy: userName
+    };
+
+    // Only include watchedDate if user provided one
+    if (watchedDate) {
+      payload.watchedDate = watchedDate;
+    }
+
+    console.log("Marking as watched:", payload);
     const response = await fetch(API, {
       method: "POST",
-      body: JSON.stringify({
-        type: "markWatched",
-        title: movie.title,
-        markedBy: userName
-      })
+      body: JSON.stringify(payload)
     });
 
     console.log("Mark watched response status:", response.status);
@@ -427,6 +436,7 @@ async function markAsWatched() {
 
     loadingIndicator.classList.add("hidden");
     input.value = "";
+    dateInput.value = "";
     triggerHaptic('success');
     customAlert("Movie marked as watched!");
 
