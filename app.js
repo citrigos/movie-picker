@@ -3,6 +3,7 @@ const API = "https://script.google.com/macros/s/AKfycbxY5sWwES-VNHpyDx1K09ai4Xr8
 let movies = [];
 let picks = {}; // changed to object to track vote counts per movie
 let userName = localStorage.getItem('userName') || '';
+let sortBy = 'alpha'; // 'alpha' or 'time'
 
 // Convert text to title case
 function toTitleCase(str) {
@@ -60,8 +61,17 @@ function drawMovies() {
   const list = document.getElementById("movie-list");
   list.innerHTML = "";
 
-  // Sort movies alphabetically
-  const sortedMovies = [...movies].sort((a, b) => a.title.localeCompare(b.title));
+  // Sort movies based on current sort option
+  const sortedMovies = [...movies].sort((a, b) => {
+    if (sortBy === 'alpha') {
+      return a.title.localeCompare(b.title);
+    } else {
+      // Sort by timestamp (newest first if no timestamp, put at end)
+      if (!a.timestamp) return 1;
+      if (!b.timestamp) return -1;
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    }
+  });
 
   sortedMovies.forEach(m => {
     const card = document.createElement("div");
@@ -70,8 +80,9 @@ function drawMovies() {
     if (voteCount > 0) {
       card.classList.add("selected");
     }
+    const suggesterText = m.suggester ? `<span class="suggester">by ${m.suggester}</span>` : '';
     card.innerHTML = `
-      <div class="movie-title">${toTitleCase(m.title)}</div>
+      <div class="movie-title">${toTitleCase(m.title)} ${suggesterText}</div>
       ${voteCount > 0 ? `<div class="vote-badge">${voteCount}</div>` : ''}
     `;
     card.onclick = () => togglePick(m.title);
@@ -289,6 +300,21 @@ document.getElementById("suggestion").addEventListener("keypress", (e) => {
 // Fun mode toggle
 document.getElementById("fun-mode-toggle").onclick = () => {
   document.body.classList.toggle("fun-mode");
+};
+
+// Sort controls
+document.getElementById("sort-alpha").onclick = () => {
+  sortBy = 'alpha';
+  document.getElementById("sort-alpha").classList.add("active");
+  document.getElementById("sort-time").classList.remove("active");
+  drawMovies();
+};
+
+document.getElementById("sort-time").onclick = () => {
+  sortBy = 'time';
+  document.getElementById("sort-time").classList.add("active");
+  document.getElementById("sort-alpha").classList.remove("active");
+  drawMovies();
 };
 
 document.addEventListener("DOMContentLoaded", () => {

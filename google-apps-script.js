@@ -23,9 +23,34 @@ function doPost(e) {
 function getMovies() {
   const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET_MOVIES);
   const data = sheet.getDataRange().getValues();
+
+  // Get suggestion data to map suggesters and timestamps
+  const suggestSheet = SpreadsheetApp.getActive().getSheetByName(SHEET_SUGGEST);
+  const suggestData = suggestSheet.getDataRange().getValues();
+
+  // Create a map of movie title -> {suggester, timestamp}
+  const suggesterMap = {};
+  for (let i = 1; i < suggestData.length; i++) {
+    const title = suggestData[i][2].toLowerCase();
+    if (!suggesterMap[title]) {
+      suggesterMap[title] = {
+        suggester: suggestData[i][1],
+        timestamp: suggestData[i][0]
+      };
+    }
+  }
+
   const movies = [];
   for (let i = 1; i < data.length; i++) {
-    movies.push({ id: data[i][0], title: data[i][1], votes: data[i][2] });
+    const title = data[i][1];
+    const movieData = suggesterMap[title.toLowerCase()];
+    movies.push({
+      id: data[i][0],
+      title: title,
+      votes: data[i][2],
+      suggester: movieData ? movieData.suggester : null,
+      timestamp: movieData ? movieData.timestamp : null
+    });
   }
   return asJSON(movies);
 }
