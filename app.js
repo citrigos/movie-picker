@@ -278,6 +278,14 @@ document.getElementById("name").addEventListener("keypress", (e) => {
   if (e.key === "Enter") saveName();
 });
 
+// Handle Enter key in suggestion input
+document.getElementById("suggestion").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    submitSuggestion();
+  }
+});
+
 // Fun mode toggle
 document.getElementById("fun-mode-toggle").onclick = () => {
   document.body.classList.toggle("fun-mode");
