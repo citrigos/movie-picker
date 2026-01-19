@@ -14,6 +14,8 @@ function doPost(e) {
     const payload = JSON.parse(e.postData.contents);
     if (payload.type === "vote") return recordVote(payload);
     if (payload.type === "suggestion") return recordSuggestion(payload);
+    if (payload.type === "markWatched") return markMovieWatched(payload);
+    if (payload.type === "unmarkWatched") return unmarkMovieWatched(payload);
     return ContentService.createTextOutput("Invalid type");
   } catch (error) {
     return ContentService.createTextOutput("Error: " + error.toString());
@@ -49,7 +51,9 @@ function getMovies() {
       title: title,
       votes: data[i][2],
       suggester: movieData ? movieData.suggester : null,
-      timestamp: movieData ? movieData.timestamp : null
+      timestamp: movieData ? movieData.timestamp : null,
+      watchedDate: data[i][3] || null,
+      markedBy: data[i][4] || null
     });
   }
   return asJSON(movies);
@@ -144,6 +148,56 @@ function recordSuggestion(payload) {
     return ContentService.createTextOutput("OK");
   } catch (error) {
     Logger.log("Error in recordSuggestion: " + error.toString());
+    return ContentService.createTextOutput("Error: " + error.toString());
+  }
+}
+
+function markMovieWatched(payload) {
+  try {
+    Logger.log("Marking movie as watched: " + JSON.stringify(payload));
+
+    const msheet = SpreadsheetApp.getActive().getSheetByName(SHEET_MOVIES);
+    const mdata = msheet.getDataRange().getValues();
+
+    // Find the movie by title
+    for (let i = 1; i < mdata.length; i++) {
+      if (mdata[i][1].toLowerCase() === payload.title.toLowerCase()) {
+        // Update Watched Date (column 4) and Marked By (column 5)
+        msheet.getRange(i + 1, 4).setValue(new Date());
+        msheet.getRange(i + 1, 5).setValue(payload.markedBy);
+        Logger.log("Movie marked as watched: " + payload.title);
+        return ContentService.createTextOutput("OK");
+      }
+    }
+
+    return ContentService.createTextOutput("Error: Movie not found");
+  } catch (error) {
+    Logger.log("Error in markMovieWatched: " + error.toString());
+    return ContentService.createTextOutput("Error: " + error.toString());
+  }
+}
+
+function unmarkMovieWatched(payload) {
+  try {
+    Logger.log("Unmarking movie as watched: " + JSON.stringify(payload));
+
+    const msheet = SpreadsheetApp.getActive().getSheetByName(SHEET_MOVIES);
+    const mdata = msheet.getDataRange().getValues();
+
+    // Find the movie by title
+    for (let i = 1; i < mdata.length; i++) {
+      if (mdata[i][1].toLowerCase() === payload.title.toLowerCase()) {
+        // Clear Watched Date (column 4) and Marked By (column 5)
+        msheet.getRange(i + 1, 4).setValue("");
+        msheet.getRange(i + 1, 5).setValue("");
+        Logger.log("Movie unmarked as watched: " + payload.title);
+        return ContentService.createTextOutput("OK");
+      }
+    }
+
+    return ContentService.createTextOutput("Error: Movie not found");
+  } catch (error) {
+    Logger.log("Error in unmarkMovieWatched: " + error.toString());
     return ContentService.createTextOutput("Error: " + error.toString());
   }
 }

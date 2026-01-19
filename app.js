@@ -4,7 +4,7 @@ let movies = [];
 let picks = {}; // changed to object to track vote counts per movie
 let userName = localStorage.getItem('userName') || '';
 let sortBy = 'alpha'; // 'alpha' or 'time'
-let watchedMovies = JSON.parse(localStorage.getItem('watchedMovies')) || [];
+let watchedMovies = []; // Now fetched from Google Sheets
 
 // Convert text to title case
 function toTitleCase(str) {
@@ -54,8 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchMovies() {
   const res = await fetch(`${API}?action=movies`);
   const allMovies = await res.json();
-  // Filter out watched movies
-  movies = allMovies.filter(m => !watchedMovies.includes(m.title.toLowerCase()));
+
+  // Separate watched and unwatched movies
+  watchedMovies = allMovies.filter(m => m.watchedDate);
+  movies = allMovies.filter(m => !m.watchedDate);
+
   drawMovies();
   updateLeaderboard();
   drawWatchedMovies();
@@ -364,12 +367,13 @@ function drawWatchedMovies() {
     return;
   }
 
-  watchedMovies.forEach(movieTitle => {
+  watchedMovies.forEach(movie => {
     const chip = document.createElement("div");
     chip.className = "watched-movie-chip";
+    const dateStr = movie.watchedDate ? ` (${formatDate(movie.watchedDate)})` : '';
     chip.innerHTML = `
-      <span>${toTitleCase(movieTitle)}</span>
-      <span class="remove-btn" data-title="${movieTitle}">×</span>
+      <span>${toTitleCase(movie.title)}${dateStr}</span>
+      <span class="remove-btn" data-title="${movie.title}">×</span>
     `;
     container.append(chip);
   });
@@ -383,41 +387,86 @@ function drawWatchedMovies() {
   });
 }
 
-function markAsWatched() {
+async function markAsWatched() {
+  if (!userName) return customAlert("Please enter your name at the top first!");
+
   const input = document.getElementById("mark-watched");
-  const movieTitle = input.value.trim().toLowerCase();
+  const movieTitle = input.value.trim();
 
   if (!movieTitle) return customAlert("Enter a movie title!");
 
-  // Check if movie exists in the full list
-  const movieExists = movies.some(m => m.title.toLowerCase() === movieTitle);
+  // Check if movie exists in the unwatched list
+  const movie = movies.find(m => m.title.toLowerCase() === movieTitle.toLowerCase());
 
-  if (!movieExists) {
+  if (!movie) {
     return customAlert("Movie not found in the list. Make sure the title matches exactly.");
   }
 
-  if (watchedMovies.includes(movieTitle)) {
+  // Check if already watched
+  if (watchedMovies.some(m => m.title.toLowerCase() === movieTitle.toLowerCase())) {
     return customAlert("This movie is already marked as watched!");
   }
 
-  watchedMovies.push(movieTitle);
-  localStorage.setItem('watchedMovies', JSON.stringify(watchedMovies));
+  const loadingIndicator = document.getElementById("loading-indicator");
+  loadingIndicator.classList.remove("hidden");
 
-  input.value = "";
-  triggerHaptic('success');
-  customAlert("Movie marked as watched!");
+  try {
+    console.log("Marking as watched:", { type: "markWatched", title: movie.title, markedBy: userName });
+    const response = await fetch(API, {
+      method: "POST",
+      body: JSON.stringify({
+        type: "markWatched",
+        title: movie.title,
+        markedBy: userName
+      })
+    });
 
-  // Refresh the movie list to remove the watched movie
-  fetchMovies();
+    console.log("Mark watched response status:", response.status);
+    const responseData = await response.text();
+    console.log("Mark watched response data:", responseData);
+
+    loadingIndicator.classList.add("hidden");
+    input.value = "";
+    triggerHaptic('success');
+    customAlert("Movie marked as watched!");
+
+    // Refresh the movie list
+    await fetchMovies();
+  } catch (error) {
+    console.error("Mark watched error:", error);
+    loadingIndicator.classList.add("hidden");
+    customAlert("Failed to mark movie as watched. Please try again.");
+  }
 }
 
-function removeWatchedMovie(title) {
-  watchedMovies = watchedMovies.filter(t => t !== title);
-  localStorage.setItem('watchedMovies', JSON.stringify(watchedMovies));
-  triggerHaptic('medium');
+async function removeWatchedMovie(title) {
+  const loadingIndicator = document.getElementById("loading-indicator");
+  loadingIndicator.classList.remove("hidden");
 
-  // Refresh to add the movie back to the list
-  fetchMovies();
+  try {
+    console.log("Unmarking as watched:", { type: "unmarkWatched", title });
+    const response = await fetch(API, {
+      method: "POST",
+      body: JSON.stringify({
+        type: "unmarkWatched",
+        title: title
+      })
+    });
+
+    console.log("Unmark watched response status:", response.status);
+    const responseData = await response.text();
+    console.log("Unmark watched response data:", responseData);
+
+    loadingIndicator.classList.add("hidden");
+    triggerHaptic('medium');
+
+    // Refresh the movie list
+    await fetchMovies();
+  } catch (error) {
+    console.error("Unmark watched error:", error);
+    loadingIndicator.classList.add("hidden");
+    customAlert("Failed to unmark movie. Please try again.");
+  }
 }
 
 document.getElementById("submit-watched").onclick = markAsWatched;
