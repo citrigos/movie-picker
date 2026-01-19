@@ -116,7 +116,8 @@ async function submitVote() {
   loadingIndicator.classList.remove("hidden");
 
   try {
-    await fetch(API, {
+    console.log("Submitting vote:", { type: "vote", name: userName, picks });
+    const response = await fetch(API, {
       method: "POST",
       body: JSON.stringify({
         type: "vote",
@@ -125,6 +126,10 @@ async function submitVote() {
       })
     });
 
+    console.log("Response status:", response.status);
+    const responseData = await response.text();
+    console.log("Response data:", responseData);
+
     loadingIndicator.classList.add("hidden");
     triggerHaptic('success');
     customAlert("Vote submitted!");
@@ -132,6 +137,7 @@ async function submitVote() {
     document.getElementById("selected-count").textContent = 0;
     await fetchMovies(); // refresh leaderboard + reset
   } catch (error) {
+    console.error("Submit vote error:", error);
     loadingIndicator.classList.add("hidden");
     customAlert("Failed to submit vote. Please try again.");
   }
@@ -155,7 +161,8 @@ async function submitSuggestion() {
   try {
     // Submit each movie separately
     for (const movie of movies) {
-      await fetch(API, {
+      console.log("Submitting suggestion:", { type: "suggestion", name: userName, suggestion: toTitleCase(movie) });
+      const response = await fetch(API, {
         method: "POST",
         body: JSON.stringify({
           type: "suggestion",
@@ -163,6 +170,7 @@ async function submitSuggestion() {
           suggestion: toTitleCase(movie)
         })
       });
+      console.log("Suggestion response status:", response.status);
     }
 
     loadingIndicator.classList.add("hidden");
@@ -172,6 +180,7 @@ async function submitSuggestion() {
     suggestionInput.value = "";
     await fetchMovies(); // refresh list instantly
   } catch (error) {
+    console.error("Submit suggestion error:", error);
     loadingIndicator.classList.add("hidden");
     customAlert("Failed to submit suggestion. Please try again.");
   }
