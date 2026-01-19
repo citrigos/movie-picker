@@ -11,6 +11,29 @@ function toTitleCase(str) {
   }).join(' ');
 }
 
+// Haptic feedback for mobile devices
+function triggerHaptic(intensity = 'medium') {
+  // Check if the Vibration API is supported
+  if ('vibrate' in navigator) {
+    switch(intensity) {
+      case 'light':
+        navigator.vibrate(10);
+        break;
+      case 'medium':
+        navigator.vibrate(20);
+        break;
+      case 'heavy':
+        navigator.vibrate([30, 10, 30]);
+        break;
+      case 'success':
+        navigator.vibrate([20, 10, 20, 10, 40]);
+        break;
+      default:
+        navigator.vibrate(20);
+    }
+  }
+}
+
 // Custom alert function
 function customAlert(message) {
   const alertEl = document.getElementById('custom-alert');
@@ -64,12 +87,18 @@ function togglePick(title) {
   if (currentVotes === 0 && totalVotes < 3) {
     // Start voting for this movie
     picks[title] = 1;
+    triggerHaptic('medium');
   } else if (currentVotes > 0 && currentVotes < 3 && totalVotes < 3) {
     // Add another vote
     picks[title]++;
+    triggerHaptic('light');
   } else if (currentVotes > 0) {
     // Remove all votes from this movie and free up space
     delete picks[title];
+    triggerHaptic('light');
+  } else {
+    // Can't add more votes (already at 3 total)
+    triggerHaptic('heavy');
   }
 
   const newTotal = Object.values(picks).reduce((sum, count) => sum + count, 0);
@@ -97,6 +126,7 @@ async function submitVote() {
     });
 
     loadingIndicator.classList.add("hidden");
+    triggerHaptic('success');
     customAlert("Vote submitted!");
     picks = {};
     document.getElementById("selected-count").textContent = 0;
@@ -136,6 +166,7 @@ async function submitSuggestion() {
     }
 
     loadingIndicator.classList.add("hidden");
+    triggerHaptic('success');
     const movieWord = movies.length === 1 ? 'movie' : 'movies';
     customAlert(`Thanks for suggesting ${movies.length} ${movieWord}!`);
     suggestionInput.value = "";
