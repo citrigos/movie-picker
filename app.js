@@ -1,4 +1,6 @@
 const API = "https://script.google.com/macros/s/AKfycbxY5sWwES-VNHpyDx1K09ai4Xr8yO4wcwcMy1i-JYmWP_mpIRO08NpbW7oxO2GCuJM/exec";
+const OMDB_API_KEY = "8a5eb86e"; // Free tier: 1000 requests/day
+const OMDB_API = "https://www.omdbapi.com/";
 
 let movies = [];
 let picks = {}; // changed to object to track vote counts per movie
@@ -50,6 +52,55 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('custom-alert').classList.add('hidden');
   };
 });
+
+// Custom confirmation dialog
+function customConfirm(message, onConfirm, onCancel) {
+  const confirmEl = document.getElementById('custom-confirm');
+  const messageEl = document.getElementById('custom-confirm-message');
+  messageEl.innerHTML = message; // Use innerHTML to support formatting
+  confirmEl.classList.remove('hidden');
+
+  const yesBtn = document.getElementById('custom-confirm-yes');
+  const noBtn = document.getElementById('custom-confirm-no');
+
+  const cleanup = () => {
+    confirmEl.classList.add('hidden');
+    yesBtn.replaceWith(yesBtn.cloneNode(true)); // Remove event listeners
+    noBtn.replaceWith(noBtn.cloneNode(true));
+  };
+
+  document.getElementById('custom-confirm-yes').onclick = () => {
+    cleanup();
+    if (onConfirm) onConfirm();
+  };
+
+  document.getElementById('custom-confirm-no').onclick = () => {
+    cleanup();
+    if (onCancel) onCancel();
+  };
+}
+
+// Lookup movie in OMDB API
+async function lookupMovie(title) {
+  try {
+    const response = await fetch(`${OMDB_API}?apikey=${OMDB_API_KEY}&t=${encodeURIComponent(title)}&type=movie`);
+    const data = await response.json();
+
+    if (data.Response === "True") {
+      return {
+        found: true,
+        title: data.Title,
+        year: data.Year,
+        director: data.Director,
+        poster: data.Poster
+      };
+    }
+    return { found: false };
+  } catch (error) {
+    console.error("OMDB lookup error:", error);
+    return { found: false };
+  }
+}
 
 async function fetchMovies() {
   const res = await fetch(`${API}?action=movies`);
@@ -193,31 +244,56 @@ async function submitSuggestion() {
   const suggestionInput = document.getElementById("suggestion");
 
   // Parse comma-separated list
-  const movies = suggestion.split(',').map(s => s.trim()).filter(s => s);
-  if (movies.length === 0) return customAlert("Enter at least one movie title!");
+  const movieTitles = suggestion.split(',').map(s => s.trim()).filter(s => s);
+  if (movieTitles.length === 0) return customAlert("Enter at least one movie title!");
 
   const loadingIndicator = document.getElementById("loading-indicator");
   loadingIndicator.classList.remove("hidden");
 
   try {
-    // Submit each movie separately
-    for (const movie of movies) {
-      console.log("Submitting suggestion:", { type: "suggestion", name: userName, suggestion: toTitleCase(movie) });
-      const response = await fetch(API, {
-        method: "POST",
-        body: JSON.stringify({
-          type: "suggestion",
-          name: userName,
-          suggestion: toTitleCase(movie)
-        })
-      });
-      console.log("Suggestion response status:", response.status);
+    // Process each movie with OMDB lookup
+    for (let i = 0; i < movieTitles.length; i++) {
+      const movieTitle = movieTitles[i];
+
+      // Look up movie in OMDB
+      const movieData = await lookupMovie(movieTitle);
+
+      if (movieData.found) {
+        // Show confirmation dialog with OMDB data
+        loadingIndicator.classList.add("hidden");
+
+        await new Promise((resolve) => {
+          const displayTitle = `${movieData.title} (${movieData.year})`;
+          const message = `Did you mean:<br><strong>${displayTitle}</strong>?`;
+
+          customConfirm(
+            message,
+            async () => {
+              // User confirmed - submit the normalized title
+              loadingIndicator.classList.remove("hidden");
+              await submitMovieToBackend(displayTitle);
+              loadingIndicator.classList.add("hidden");
+              resolve();
+            },
+            async () => {
+              // User rejected - use original title
+              loadingIndicator.classList.remove("hidden");
+              await submitMovieToBackend(toTitleCase(movieTitle));
+              loadingIndicator.classList.add("hidden");
+              resolve();
+            }
+          );
+        });
+      } else {
+        // No match found - use original title
+        await submitMovieToBackend(toTitleCase(movieTitle));
+      }
     }
 
     loadingIndicator.classList.add("hidden");
     triggerHaptic('success');
-    const movieWord = movies.length === 1 ? 'movie' : 'movies';
-    customAlert(`Thanks for suggesting ${movies.length} ${movieWord}!`);
+    const movieWord = movieTitles.length === 1 ? 'movie' : 'movies';
+    customAlert(`Thanks for suggesting ${movieTitles.length} ${movieWord}!`);
     suggestionInput.value = "";
     await fetchMovies(); // refresh list instantly
   } catch (error) {
@@ -225,6 +301,21 @@ async function submitSuggestion() {
     loadingIndicator.classList.add("hidden");
     customAlert("Failed to submit suggestion. Please try again.");
   }
+}
+
+// Helper function to submit movie to backend
+async function submitMovieToBackend(movieTitle) {
+  console.log("Submitting suggestion:", { type: "suggestion", name: userName, suggestion: movieTitle });
+  const response = await fetch(API, {
+    method: "POST",
+    body: JSON.stringify({
+      type: "suggestion",
+      name: userName,
+      suggestion: movieTitle
+    })
+  });
+  console.log("Suggestion response status:", response.status);
+  return response;
 }
 
 async function updateLeaderboard() {
